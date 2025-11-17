@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stocking - Gestión de Inventario Personal</title>
+    <!-- Incluye Tailwind CSS para un diseño moderno y responsivo -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Estilo personalizado para un mejor aspecto */
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f7f9fb;
+            display: flex;
+            justify-content: center;
+            padding: 2rem;
+        }
+        /* Clase para destacar el stock bajo */
+        .low-stock {
+            color: #dc2626; /* red-600 */
+            font-weight: 600;
+        }
+        /* Clase para destacar el stock normal/alto */
+        .normal-stock {
+            color: #16a34a; /* green-600 */
+            font-weight: 600;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="w-full max-w-4xl bg-white p-8 rounded-xl shadow-2xl border border-gray-100">
+        <header class="mb-6 border-b pb-4">
+            <h1 class="text-4xl font-extrabold text-indigo-700">
+                Stocking | Inventario Personal
+            </h1>
+            <p class="text-sm text-gray-500 mt-1">Aplicación desarrollada bajo principios del Proceso de Software Personal (PSP).</p>
+        </header>
+
+        <!-- Campo de Búsqueda -->
+        <div class="mb-8">
+            <input
+                type="text"
+                id="searchInput"
+                placeholder="Buscar por nombre, SKU o ubicación..."
+                class="w-full p-4 text-lg border-2 border-indigo-400 rounded-lg focus:outline-none focus:ring-4 focus:ring-indigo-300 transition duration-150"
+                oninput="handleSearch()"
+            >
+        </div>
+
+        <!-- Contenedor de Resultados -->
+        <div id="resultsContainer" class="space-y-4">
+            <!-- Los resultados de inventario se inyectarán aquí por JavaScript -->
+        </div>
+
+    </div>
+
+    <script>
+        // Establecer un umbral para stock bajo (ejemplo: menos de 10 unidades)
+        const LOW_STOCK_THRESHOLD = 10;
+        
+        // --- 1. DATOS DE INVENTARIO (Simula la base de datos de Stocking) ---
+        const inventoryItems = [
+            {
+                id: 1,
+                nombre: "Monitor LED 27 pulgadas",
+                sku: "EL-MON-001",
+                cantidad: 15,
+                ubicacion: "Almacén A - Estante 3",
+                categoria: "Hardware",
+                descripcion: "Monitores para estación de trabajo.",
+            },
+            {
+                id: 2,
+                nombre: "Licencias de Software de Diseño (Anual)",
+                sku: "SW-DIS-L02",
+                cantidad: 8, // Stock bajo
+                ubicacion: "Servidor Digital - Carpeta Licencias",
+                categoria: "Software",
+                descripcion: "Licencias activas para herramientas de diseño gráfico.",
+            },
+            {
+                id: 3,
+                nombre: "Teclado Mecánico Ergonómico",
+                sku: "ACC-TEC-005",
+                cantidad: 30,
+                ubicacion: "Oficina Principal - Cajón T",
+                categoria: "Accesorios",
+                descripcion: "Teclados de alta durabilidad para desarrolladores.",
+            },
+            {
+                id: 4,
+                nombre: "Cable de Red CAT6 (Metros)",
+                sku: "RED-CAB-CAT6",
+                cantidad: 5, // Stock muy bajo
+                ubicacion: "Almacén B - Caja 10",
+                categoria: "Redes",
+                descripcion: "Cable de red de alta velocidad para infraestructura.",
+            }
+        ];
+
+        // --- 2. FUNCIÓN DE RENDERIZADO (Dibuja los resultados en el HTML) ---
+        function renderResults(items) {
+            const container = document.getElementById('resultsContainer');
+            container.innerHTML = ''; // Limpia resultados anteriores
+
+            if (items.length === 0) {
+                container.innerHTML = `
+                    <div class="text-center p-10 bg-gray-100 rounded-lg border border-gray-200">
+                        <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                        </svg>
+                        <h3 class="mt-2 text-lg font-semibold text-gray-900">Artículo no encontrado</h3>
+                        <p class="mt-1 text-sm text-gray-500">No hay elementos que coincidan con tu criterio de búsqueda.</p>
+                    </div>
+                `;
+                return;
+            }
+
+            items.forEach(item => {
+                // Determina la clase CSS según el nivel de stock
+                const stockClass = item.cantidad < LOW_STOCK_THRESHOLD ? 'low-stock' : 'normal-stock';
+                const stockText = item.cantidad < LOW_STOCK_THRESHOLD ? '¡Stock Bajo!' : 'En Stock';
+
+                const resultCard = `
+                    <div class="p-5 border border-gray-200 rounded-xl bg-white shadow-md hover:shadow-lg transition duration-200 flex flex-col sm:flex-row justify-between">
+                        <!-- Detalles del Artículo -->
+                        <div class="sm:w-3/4 mb-4 sm:mb-0">
+                            <h2 class="text-xl font-bold text-gray-800">${item.nombre}</h2>
+                            <p class="text-sm text-gray-500 mt-1">
+                                SKU: <span class="font-mono text-xs text-indigo-600">${item.sku}</span>
+                            </p>
+                            <p class="mt-2 text-gray-700">${item.descripcion}</p>
+                            <div class="mt-3 flex flex-wrap gap-2 text-sm">
+                                <span class="bg-indigo-100 text-indigo-700 font-medium px-3 py-1 rounded-full">Categoría: ${item.categoria}</span>
+                            </div>
+                        </div>
+
+                        <!-- Estado del Inventario -->
+                        <div class="sm:w-1/4 sm:text-right flex flex-col items-start sm:items-end justify-center">
+                            <p class="text-4xl font-extrabold ${stockClass}">${item.cantidad}</p>
+                            <p class="text-xs font-semibold ${stockClass} mt-1">${stockText}</p>
+                            <p class="text-sm text-gray-600 mt-2">Ubicación: ${item.ubicacion}</p>
+                        </div>
+                    </div>
+                `;
+                container.innerHTML += resultCard;
+            });
+        }
+
+        // --- 3. FUNCIÓN DE BÚSQUEDA (La lógica principal de filtrado) ---
+        function handleSearch() {
+            // 1. Obtener la consulta y prepararla (limpiar espacios y poner en minúsculas)
+            const input = document.getElementById('searchInput');
+            const query = input.value.trim().toLowerCase();
+
+            // Si la consulta está vacía, mostrar todos los elementos
+            if (query === '') {
+                renderResults(inventoryItems);
+                return;
+            }
+
+            // 2. Filtrar los datos
+            const filteredItems = inventoryItems.filter(item => {
+                // Combina los campos de inventario relevantes en una sola cadena para buscar
+                const searchableText = `${item.nombre} ${item.sku} ${item.ubicacion} ${item.categoria} ${item.descripcion}`.toLowerCase();
+
+                // Comprueba si el texto de búsqueda está incluido
+                return searchableText.includes(query);
+            });
+
+            // 3. Renderizar los resultados filtrados
+            renderResults(filteredItems);
+        }
+
+        // --- 4. INICIALIZACIÓN ---
+        // Mostrar todos los artículos al cargar la página
+        window.onload = () => {
+            renderResults(inventoryItems);
+        };
+    </script>
+
+</body>
+</html>

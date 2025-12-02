@@ -24,6 +24,9 @@
         <button id="btn-ver-busqueda" class="tab-button">
             Búsqueda
         </button>
+        <button id="btn-ver-graficas" class="tab-button">
+            Gráficas
+        </button>
     </div>
 
     <!-- TABLERO PRINCIPAL -->
@@ -36,8 +39,20 @@
                     Mi Inventario
                 </h1>
             </div>
+
             <!-- Columnas -->
             <div class="columnas" id="columnas"></div>
+        </section>
+
+        <!-- 📊 SECCIÓN DE GRÁFICAS -->
+        <section id="graficas-section" class="max-w-4xl mx-auto mt-10 mb-10 bg-white rounded-xl shadow-lg p-6" style="display:none;">
+            <h2 class="text-2xl font-bold text-gray-800 mb-4">Cantidad por producto</h2>
+            <p class="text-sm text-gray-500 mb-4">
+                Total de unidades que hay de cada producto en el inventario.
+            </p>
+            <div class="w-full h-80">
+                <canvas id="productosChart"></canvas>
+            </div>
         </section>
 
         <!-- 🔍 SECCIÓN DE BÚSQUEDA -->
@@ -58,7 +73,7 @@
             </div>
             <div class="campo">
                 <span>Cantidad</span>
-                <input type="number" id="modal-cantidad" value="1" min="1">
+                <input type="number" id="modal-cantidad" value="1" min="1" max="9999">
             </div>
             <div class="acciones-modal">
                 <button id="modal-cancelar">Cancelar</button>
@@ -68,6 +83,8 @@
     </div>
 
     <!-- Lógica de la app -->
+    <!-- Primero Chart.js, luego tu código -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js" defer></script>
     <script src="app.js" defer></script>
 </body>
 </html>

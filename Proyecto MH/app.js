@@ -5,6 +5,9 @@ const LOW_STOCK_THRESHOLD = 10;
 let appState = null;
 let listaDestinoActual = null;
 
+// 📊 Referencia a la gráfica de productos
+let productsChart = null;
+
 // ---------- Inicialización ----------
 document.addEventListener('DOMContentLoaded', async () => {
     try {
@@ -19,6 +22,10 @@ async function initializeApp() {
     initBoard();
     appState = loadState();
     applyStateToBoard(appState);
+
+    // 📊 Inicializar gráfica con el estado actual
+    initCharts();
+
     await initSearchSection();
     initEvents();
     refreshSearch();
@@ -82,35 +89,65 @@ function normalizeColumns(columns) {
 function showInventoryView() {
     const inventorySection = document.getElementById('inventario-section');
     const searchSection = document.getElementById('busqueda-root');
+    const chartsSection = document.getElementById('graficas-section');
 
     if (inventorySection) inventorySection.style.display = 'block';
     if (searchSection) searchSection.style.display = 'none';
+    if (chartsSection) chartsSection.style.display = 'none';
 
     const btnInventario = document.getElementById('btn-ver-inventario');
     const btnBusqueda = document.getElementById('btn-ver-busqueda');
+    const btnGraficas = document.getElementById('btn-ver-graficas');
 
     if (btnInventario) btnInventario.classList.add('active');
     if (btnBusqueda) btnBusqueda.classList.remove('active');
+    if (btnGraficas) btnGraficas.classList.remove('active');
 }
 
 function showSearchView() {
     const inventorySection = document.getElementById('inventario-section');
     const searchSection = document.getElementById('busqueda-root');
+    const chartsSection = document.getElementById('graficas-section');
 
     if (inventorySection) inventorySection.style.display = 'none';
     if (searchSection) searchSection.style.display = 'block';
+    if (chartsSection) chartsSection.style.display = 'none';
 
     const btnInventario = document.getElementById('btn-ver-inventario');
     const btnBusqueda = document.getElementById('btn-ver-busqueda');
+    const btnGraficas = document.getElementById('btn-ver-graficas');
 
     if (btnInventario) btnInventario.classList.remove('active');
     if (btnBusqueda) btnBusqueda.classList.add('active');
+    if (btnGraficas) btnGraficas.classList.remove('active');
+}
+
+function showChartsView() {
+    const inventorySection = document.getElementById('inventario-section');
+    const searchSection = document.getElementById('busqueda-root');
+    const chartsSection = document.getElementById('graficas-section');
+
+    if (inventorySection) inventorySection.style.display = 'none';
+    if (searchSection) searchSection.style.display = 'none';
+    if (chartsSection) chartsSection.style.display = 'block';
+
+    const btnInventario = document.getElementById('btn-ver-inventario');
+    const btnBusqueda = document.getElementById('btn-ver-busqueda');
+    const btnGraficas = document.getElementById('btn-ver-graficas');
+
+    if (btnInventario) btnInventario.classList.remove('active');
+    if (btnBusqueda) btnBusqueda.classList.remove('active');
+    if (btnGraficas) btnGraficas.classList.add('active');
 }
 
 function saveState() {
     try {
         appState = getStateFromDOM();
         localStorage.setItem(STORAGE_KEY, JSON.stringify(appState));
+
+        // 📊 Actualizar gráfica cuando cambia el inventario
+        updateCharts();
+
         showNotification('Cambios guardados', 'success');
     } catch (error) {
         console.error('Error guardando estado:', error);
@@ -119,7 +156,7 @@ function saveState() {
 }
 
 function getStateFromDOM() {
-       const inventoryName = 'Mi Inventario';
+    const inventoryName = 'Mi Inventario';
     
     const categories = Array.from(document.querySelectorAll('.categoria'))
         .map(c => c.textContent.trim());
@@ -201,20 +238,24 @@ function createSearchFallbackHTML() {
 // ---------- Gestión de Eventos ----------
 function initEvents() {
     // Eventos del sidebar
-const sidebar = document.getElementById('sidebar-inventory-name');
+    const sidebar = document.getElementById('sidebar-inventory-name');
     if (sidebar) {
         sidebar.addEventListener('click', editarInventarioNombre);
     }
 
     // 🔀 Eventos de cambio de vista
-    const btnVerInventario = document.getElementById('btn-ver-inventario');
+   const btnVerInventario = document.getElementById('btn-ver-inventario');
     const btnVerBusqueda = document.getElementById('btn-ver-busqueda');
+    const btnVerGraficas = document.getElementById('btn-ver-graficas');
 
     if (btnVerInventario) {
         btnVerInventario.addEventListener('click', showInventoryView);
     }
     if (btnVerBusqueda) {
         btnVerBusqueda.addEventListener('click', showSearchView);
+    }
+    if (btnVerGraficas) {
+        btnVerGraficas.addEventListener('click', showChartsView);
     }
 
     // Eventos de categorías
@@ -516,6 +557,96 @@ function getInventoryFromState(state) {
     });
 
     return items;
+}
+
+// 📊 Agrupa cantidades por nombre de producto
+function getAggregatedProducts(state) {
+    const result = {
+        labels: [],
+        data: []
+    };
+
+    if (!state || !Array.isArray(state.columns)) return result;
+
+    const totals = new Map();
+
+    state.columns.forEach(colItems => {
+        if (!Array.isArray(colItems)) return;
+
+        colItems.forEach(item => {
+            if (!item || !item.nombre) return;
+
+            const name = item.nombre.trim();
+            if (!name) return;
+
+            const qty = Math.max(1, Number(item.cantidad || 1));
+            totals.set(name, (totals.get(name) || 0) + qty);
+        });
+    });
+
+    totals.forEach((value, key) => {
+        result.labels.push(key);
+        result.data.push(value);
+    });
+
+    return result;
+}
+
+// 📊 Inicializa la gráfica
+function initCharts() {
+    const canvas = document.getElementById('productosChart');
+    if (!canvas) return;
+
+    // Si Chart.js no está definido, no hacemos nada
+    if (typeof Chart === 'undefined') return;
+
+    const ctx = canvas.getContext('2d');
+    const { labels, data } = getAggregatedProducts(appState);
+
+    productsChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels,
+            datasets: [
+                {
+                    label: 'Cantidad por producto',
+                    data
+                    // Dejo que Chart.js use sus colores por defecto
+                },
+            ],
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        precision: 0
+                    },
+                },
+            },
+        },
+    });
+}
+
+// 📊 Actualiza la gráfica cuando cambia el inventario
+function updateCharts() {
+    const canvas = document.getElementById('productosChart');
+    if (!canvas) return;
+    if (typeof Chart === 'undefined') return;
+
+    // Si aún no existe la gráfica, la creamos
+    if (!productsChart) {
+        initCharts();
+        return;
+    }
+
+    const { labels, data } = getAggregatedProducts(appState);
+
+    productsChart.data.labels = labels;
+    productsChart.data.datasets[0].data = data;
+    productsChart.update();
 }
 
 function renderResults(items) {
